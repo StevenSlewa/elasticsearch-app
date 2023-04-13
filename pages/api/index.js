@@ -3,13 +3,11 @@ import DocModel from '../../model/Doc'
 import formidable from "formidable";
 import fs from "fs";
 
-export const config = {
-  api: {
-    bodyParser: false
-  }
-};
 
 
+
+// TODO MOVE KEYS TO ENV
+// TODO FIX ARCHITECTURE
 const client = new Client({
   cloud: {
     id: 'elastic-search-app:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRmMTlkZWQ2YzEzOTM0NzM2YmVlZDM2YTcyODBlNjc1MiRkMDFhM2UwYTU4MjA0MTdhYjdiM2Y3ZDUyZGM3ODA1OA=='
@@ -18,6 +16,12 @@ const client = new Client({
     apiKey: 'M2hkYWNJY0I1Y0xaT3NCZ2FqV2s6MUdBSDVRRmtReVNlZW9PVjN4ZmFBdw=='
   }
 });
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};
 
 
 
@@ -29,7 +33,7 @@ export default async function handler(req, res) {
 
     if (!q) {
       const docs = await DocModel.find();
-      res.status(200).json(docs);
+      return res.status(200).json(docs);
     }
 
     try {
@@ -38,9 +42,11 @@ export default async function handler(req, res) {
         body: {
           "query": {
             "match_phrase_prefix": {
-              "title": {
-                "query": `${q}`,
-                //  "fuzziness":"AUTO",
+              "attachment": {
+                "content": {
+                  "query": `${q}`,
+                  //  "fuzziness":"AUTO",
+                }
               }
             }
           }
@@ -49,79 +55,98 @@ export default async function handler(req, res) {
 
       console.log(body)
 
-      const data = body.hits.hits.map(e => ({ id: e._id, title: e._source.title }));
-
+      const data = body.hits.hits.map(e => ({ _id: e._id, title: e._source.title }));
 
       res.status(200).json(data);
     } catch (error) {
       console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error' });
     }
   }
+
+
   else if (req.method === 'POST') {
 
 
-
     const form = formidable({ multiples: true });
-    let result = form.parse(req, async function (err, fields, files) {
+    console.log("first")
 
-      const doc = new DocModel({
-        title: files.file.originalFilename,
-      });
+    const result = form.parse(req, async (err, fields, files) => {
+      try {
+        console.log(err)
 
-      const savedDoc = await doc.save();
+        const doc = new DocModel({
+          title: files.file.originalFilename,
+        });
+        console.log(await doc.save(), "okok")
+        const savedDoc = await doc.save();
 
-      const data = fs.readFileSync(files.file.filepath);
-      fs.writeFileSync(`./public/${savedDoc._id}.pdf`, data);
-      fs.unlinkSync(files.file.filepath);
+        console.log("ffsec")
 
-      await DocModel.updateOne({ _id: savedDoc._id }, { url: `./public/${savedDoc._id}.pdf` });
 
-      await createPdfPipeline();
-      const body = await client.index({
-        index: 'docs',
-        id: savedDoc._id,
-        pipeline: 'pdf',
-        body: {
-          title: savedDoc.title,
-          attachment: {
-            content_type: 'application/pdf',
-            content: data.toString('base64'),
+        const pdfPath = `./public/files/${savedDoc._id}.pdf`;
+        const data = fs.readFileSync(files.file.filepath);
+        fs.writeFileSync(pdfPath, data);
+        fs.unlinkSync(files.file.filepath);
+
+
+        await DocModel.updateOne({ _id: savedDoc._id }, { url: pdfPath });
+
+        await createPipeline();
+        console.log("second")
+        await client.index({
+          index: 'docs',
+          id: savedDoc._id,
+          pipeline: 'pdf-attachment',
+          document: {
+            attachment: data.toString('base64'),
+            title: savedDoc.title,
           },
-        },
-      });
+        });
+        console.log("third")
 
-      return savedDoc;
+        await client.indices.refresh({ index: 'docs' })
+      }
+      catch (error) {
+        console.log(error)
+
+      }
 
     });
+
 
     res.status(200).json(result);
   }
 }
 
-async function createPdfPipeline() {
-  const pipeline = {
-    description: 'Extract text from PDF files',
-    processors: [
-      {
-        attachment: {
-          field: 'attachment',
-        },
-      },
-    ],
-  };
-
+const createPipeline = async () => {
+  const pipeID = 'pdf-attachment'
   try {
-    const { body: response } = await client.ingest.getPipeline({ id: 'pdf' });
-    console.log('Pipeline already exists:', response);
-    return;
+    await client.ingest.getPipeline({ id: 'pipeID' });
   } catch (error) {
     if (error.statusCode !== 404) {
       throw error;
     }
   }
 
-  const { body: response } = await client.ingest.putPipeline({ id: 'pdf', body: pipeline });
-
-  console.log('Pipeline created:', response);
-}
+  await client.ingest.putPipeline({
+    id: pipeID,
+    body: {
+      description: 'Extract attachment information from PDF files',
+      processors: [
+        {
+          attachment: {
+            field: 'attachment',
+            indexed_chars: -1,
+            ignore_missing: true,
+          },
+        },
+        // {
+        //   remove: {
+        //     field: 'attachment',
+        //   },
+        // },
+      ],
+    },
+  });
+};

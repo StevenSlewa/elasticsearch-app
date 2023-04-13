@@ -1,7 +1,6 @@
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { saveAs } from "file-saver";
-import Link from "next/link";
 
 
 export default function Home({data}) {
@@ -36,19 +35,13 @@ async function postData(files){
     getData();
   },[])
 
-  // const saveFile = async (url,title) => {
-  //   try {
-  //     const response = await fetch({
-  //       url: url,
-  //       method: "GET",
-  //     });
-  
-  //     console.log(response);
-  
-  //   } catch (error) {
-  //     console.error(error);
-  //   }
-  // };
+  const saveFile = (title, id) => {
+    saveAs(
+        `/files/${id}.pdf`,
+        title,
+    );
+};
+
 
   const handleFileSelect = e => {
 
@@ -75,9 +68,9 @@ async function postData(files){
       <section className="w-8/12 mx-auto my-8">
 
         <div className=" flex items-center justify-center w-full">
-          <label for="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+          <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <svg aria-hidden="true" className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <svg aria-hidden="true" className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
               <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
             </div>
@@ -93,16 +86,13 @@ async function postData(files){
         {
           files.map((file)=>{
             return (
-              <Link  key={file.id} href=`/api/download/${file.url}`>
-              <div  className="flex justify-between w-full mb-4 text-gray-400 py-4 px-4 rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+              <div key={file._id} onClick={() => { saveFile(file.title, file._id); }} className="flex justify-between w-full mb-4 text-gray-400 py-4 px-4 rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                 <p>{file.title}</p> 
-                <p>{file.url}</p>
+                <p>{file._id}</p>
               </div>
-              </Link>
             );
           })
         }
-
       </section>
 
     </main>

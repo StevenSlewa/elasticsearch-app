@@ -5,19 +5,17 @@ export default function Search() {
     const [files, setFiles] = useState([]);
 
 
-    const saveFile = (title, url) => {
+    const saveFile = (title, id) => {
         saveAs(
-            "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-            "example.pdf"
+            `/files/${id}.pdf`,
+            title,
         );
     };
 
     async function getData(q) {
 
-        const res = await fetch(`/api?q=${q}`)
-        
+        const res = await fetch(`/api?q=${q}`)        
         const files = await res.json()
-        console.log(files);
 
         setFiles(files)
 
@@ -35,8 +33,8 @@ export default function Search() {
 
                 <div className="relative w-full max-w-md mx-auto">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-white">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-white">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                         </svg>
                     </div>
                     <input
@@ -52,11 +50,12 @@ export default function Search() {
                 <br />
 
                 {
-                    files.map((file,index) => {
+
+                    files.map((file) => {
                         return (
-                            <div key={file.id ?? index} onClick={() => { saveFile(file.title, file.url); }} className="flex justify-between w-full mb-4 text-gray-400 py-4 px-4 rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                            <div key={file._id} onClick={() => { saveFile(file.title, file._id); }} className="flex justify-between w-full mb-4 text-gray-400 py-4 px-4 rounded-md cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                                 <p>{file.title}</p>
-                                <p>{file.url?? "none"}</p>
+                                <p>{file._id}</p>
                             </div>
                         );
                     })
