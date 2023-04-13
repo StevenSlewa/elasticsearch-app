@@ -71,51 +71,49 @@ export default async function handler(req, res) {
     const form = formidable({ multiples: true });
     console.log("first")
 
-    const result = form.parse(req, async (err, fields, files) => {
-      try {
-        console.log(err)
-
-        const doc = new DocModel({
-          title: files.file.originalFilename,
-        });
-        console.log(await doc.save(), "okok")
-        const savedDoc = await doc.save();
-
-        console.log("ffsec")
-
-
-        const pdfPath = `./public/files/${savedDoc._id}.pdf`;
-        const data = fs.readFileSync(files.file.filepath);
-        fs.writeFileSync(pdfPath, data);
-        fs.unlinkSync(files.file.filepath);
-
-
-        await DocModel.updateOne({ _id: savedDoc._id }, { url: pdfPath });
-
-        await createPipeline();
-        console.log("second")
-        await client.index({
-          index: 'docs',
-          id: savedDoc._id,
-          pipeline: 'pdf-attachment',
-          document: {
-            attachment: data.toString('base64'),
-            title: savedDoc.title,
-          },
-        });
-        console.log("third")
-
-        await client.indices.refresh({ index: 'docs' })
-      }
-      catch (error) {
-        console.log(error)
-
-      }
-
+    const { fields, files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ fields, files });
+        }
+      });
     });
 
+    const doc = new DocModel({
+      title: files.file.originalFilename,
+    });
+    console.log(await doc.save(), "okok")
+    const savedDoc = await doc.save();
 
-    res.status(200).json(result);
+    console.log("ffsec")
+
+
+    const pdfPath = `./public/files/${savedDoc._id}.pdf`;
+    const data = fs.readFileSync(files.file.filepath);
+    fs.writeFileSync(pdfPath, data);
+    fs.unlinkSync(files.file.filepath);
+
+
+    await DocModel.updateOne({ _id: savedDoc._id }, { url: pdfPath });
+
+    await createPipeline();
+    console.log("second")
+    await client.index({
+      index: 'docs',
+      id: savedDoc._id,
+      pipeline: 'pdf-attachment',
+      document: {
+        attachment: data.toString('base64'),
+        title: savedDoc.title,
+      },
+    });
+    console.log("third")
+
+    await client.indices.refresh({ index: 'docs' })
+   
+    res.status(200).json(savedDoc);
   }
 }
 
