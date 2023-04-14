@@ -3,17 +3,15 @@ import DocModel from '../../model/Doc'
 import formidable from "formidable";
 import fs from "fs";
 
-
-
-
-// TODO MOVE KEYS TO ENV
 // TODO FIX ARCHITECTURE
 const client = new Client({
   cloud: {
-    id: 'elastic-search-app:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRmMTlkZWQ2YzEzOTM0NzM2YmVlZDM2YTcyODBlNjc1MiRkMDFhM2UwYTU4MjA0MTdhYjdiM2Y3ZDUyZGM3ODA1OA=='
+    // id: 'elastic-search-app:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRmMTlkZWQ2YzEzOTM0NzM2YmVlZDM2YTcyODBlNjc1MiRkMDFhM2UwYTU4MjA0MTdhYjdiM2Y3ZDUyZGM3ODA1OA=='
+  id: process.env.CLOUD_ID
   },
   auth: {
-    apiKey: 'M2hkYWNJY0I1Y0xaT3NCZ2FqV2s6MUdBSDVRRmtReVNlZW9PVjN4ZmFBdw=='
+    // apiKey: 'M2hkYWNJY0I1Y0xaT3NCZ2FqV2s6MUdBSDVRRmtReVNlZW9PVjN4ZmFBdw=='
+    apiKey:process.env.AUTH_API_KEY
   }
 });
 
@@ -28,12 +26,14 @@ export const config = {
 export default async function handler(req, res) {
 
   if (req.method === 'GET') {
-
     const { q } = req.query;
 
     if (!q) {
       const docs = await DocModel.find();
       return res.status(200).json(docs);
+    }
+    if (q === '') {
+      return res.status(200).json([]);
     }
 
     try {
@@ -41,21 +41,31 @@ export default async function handler(req, res) {
         index: 'docs',
         body: {
           "query": {
-            "match_phrase_prefix": {
-              "attachment": {
-                "content": {
-                  "query": `${q}`,
-                  //  "fuzziness":"AUTO",
+            "bool": {
+              "should": [
+                {
+                  "match_phrase_prefix": {
+                    "attachment.content": {
+                      "query": `${q}`,
+                    }
+                  }
+                },
+                {
+                  "match_phrase_prefix": {
+                    "title": {
+                      "query": `${q}`,
+                    }
+                  }
                 }
-              }
+              ]
             }
-          }
+
+          },
+
         }
       });
 
-      console.log(body)
-
-      const data = body.hits.hits.map(e => ({ _id: e._id, title: e._source.title }));
+      const data = body.hits.hits.map(e => ({ _id: e._id, title: e._source?.title ?? '', attachment: e._source?.attachment ?? ''}));
 
       res.status(200).json(data);
     } catch (error) {
@@ -67,9 +77,7 @@ export default async function handler(req, res) {
 
   else if (req.method === 'POST') {
 
-
     const form = formidable({ multiples: true });
-    console.log("first")
 
     const { fields, files } = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
@@ -81,39 +89,36 @@ export default async function handler(req, res) {
       });
     });
 
-    const doc = new DocModel({
-      title: files.file.originalFilename,
-    });
-    console.log(await doc.save(), "okok")
-    const savedDoc = await doc.save();
+    for (let fileKey in files) {
+      let file = files[fileKey];
 
-    console.log("ffsec")
+      const doc = new DocModel({
+        title: file.originalFilename,
+      });
+      const savedDoc = await doc.save();
 
+      const pdfPath = `./public/files/${savedDoc._id}.pdf`;
+      const data = fs.readFileSync(file.filepath);
+      fs.writeFileSync(pdfPath, data);
+      fs.unlinkSync(file.filepath);
 
-    const pdfPath = `./public/files/${savedDoc._id}.pdf`;
-    const data = fs.readFileSync(files.file.filepath);
-    fs.writeFileSync(pdfPath, data);
-    fs.unlinkSync(files.file.filepath);
+      await DocModel.updateOne({ _id: savedDoc._id }, { url: pdfPath });
 
+      await createPipeline();
+      await client.index({
+        index: 'docs',
+        id: savedDoc._id,
+        pipeline: 'pdf-attachment',
+        document: {
+          attachment: data.toString('base64'),
+          title: savedDoc.title,
+        },
+      });
 
-    await DocModel.updateOne({ _id: savedDoc._id }, { url: pdfPath });
+      await client.indices.refresh({ index: 'docs' })
+    }
 
-    await createPipeline();
-    console.log("second")
-    await client.index({
-      index: 'docs',
-      id: savedDoc._id,
-      pipeline: 'pdf-attachment',
-      document: {
-        attachment: data.toString('base64'),
-        title: savedDoc.title,
-      },
-    });
-    console.log("third")
-
-    await client.indices.refresh({ index: 'docs' })
-   
-    res.status(200).json(savedDoc);
+    res.status(200).json('savedDoc');
   }
 }
 
@@ -139,11 +144,6 @@ const createPipeline = async () => {
             ignore_missing: true,
           },
         },
-        // {
-        //   remove: {
-        //     field: 'attachment',
-        //   },
-        // },
       ],
     },
   });
