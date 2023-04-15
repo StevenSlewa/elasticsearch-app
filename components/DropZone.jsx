@@ -1,6 +1,7 @@
-import { handleGet, handlePost } from '@/controller/DataHandlers';
+import { handleGet, handlePost } from '@/endpoints/api';
 import { useDropzone } from 'react-dropzone';
-import { UploadSvg, LoadingSvg } from '@/assets/svgs'
+import LoadingIcon from '@/assets/icons/loading.svg'
+import UploadIcon from '@/assets/icons/upload.svg'
 
 function DropZone({ isPosting, setIsPosting, setIsLoading, setFiles }) {
   const { getRootProps, getInputProps } = useDropzone({
@@ -34,18 +35,27 @@ function DropZone({ isPosting, setIsPosting, setIsLoading, setFiles }) {
         {
           isPosting ?
             (<div role="status" className='w-10 h-10 text-gray-200'>
-              <LoadingSvg />
+              <LoadingIcon className="animate-spin dark:text-gray-400 fill-blue-600" />
               <span className="sr-only">Loading...</span>
             </div>)
             : (
               <>
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <div className='h-10 w-10 mb-5'><UploadSvg /></div>
+                  <div className='h-10 w-10 mb-5'>
+                    <UploadIcon className="text-white" />
+                  </div>
                   <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-semibold">Click to upload</span> or drag and drop</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
                 </div>
-                <input {...getInputProps()} id="dropzone-file" multiple type="file" className="hidden"
-                  onChange={handleFileSelect} />
+                <div {...getInputProps()}
+                >
+                  <input 
+                    id="dropzone-file"
+                    multiple={true}
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </div>
               </>
             )
         }

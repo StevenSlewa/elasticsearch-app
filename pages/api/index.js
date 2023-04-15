@@ -3,14 +3,11 @@ import DocModel from '../../model/Doc'
 import formidable from "formidable";
 import fs from "fs";
 
-// TODO FIX ARCHITECTURE
 const client = new Client({
   cloud: {
-    // id: 'elastic-search-app:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRmMTlkZWQ2YzEzOTM0NzM2YmVlZDM2YTcyODBlNjc1MiRkMDFhM2UwYTU4MjA0MTdhYjdiM2Y3ZDUyZGM3ODA1OA=='
   id: process.env.CLOUD_ID
   },
   auth: {
-    // apiKey: 'M2hkYWNJY0I1Y0xaT3NCZ2FqV2s6MUdBSDVRRmtReVNlZW9PVjN4ZmFBdw=='
     apiKey:process.env.AUTH_API_KEY
   }
 });
@@ -20,8 +17,6 @@ export const config = {
     bodyParser: false
   }
 };
-
-
 
 export default async function handler(req, res) {
 
