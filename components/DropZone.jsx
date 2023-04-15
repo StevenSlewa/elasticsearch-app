@@ -5,6 +5,7 @@ import UploadIcon from '@/assets/icons/upload.svg'
 
 function DropZone({ isPosting, setIsPosting, setIsLoading, setFiles }) {
   const { getRootProps, getInputProps } = useDropzone({
+    multiple: true,
     onDrop: async (acceptedFiles) => {
       await postData(acceptedFiles);
     }
