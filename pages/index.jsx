@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import HomeSkeleton from "@/components/HomeSkeleton";
 import DropZone from "@/components/DropZone";
-import { handleGet, handleSave } from "@/controller/DataHandlers";
+import { handleGet, handleSave } from "@/endpoints/api";
 
 export default function Home() {
   const [files, setFiles] = useState([]);
